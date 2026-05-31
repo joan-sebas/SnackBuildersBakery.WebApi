@@ -69,6 +69,13 @@ public sealed class Order
 
         Status = OrderStatus.Paid;
     }
+
+    /// <summary>Marks the order paid and raises <see cref="PaymentSucceeded"/>.</summary>
+    public void Pay(Guid paymentId, DateTimeOffset now)
+    {
+        MarkPaid();
+        RaiseDomainEvent(new PaymentSucceeded(Id, paymentId, now));
+    }
 }
 
 public sealed class InvalidPriorityLevelError(PriorityLevel priorityLevel)
