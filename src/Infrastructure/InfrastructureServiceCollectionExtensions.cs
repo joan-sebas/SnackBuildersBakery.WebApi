@@ -26,6 +26,11 @@ public static class InfrastructureServiceCollectionExtensions
 
         services.AddTransient<SchedulerReconstructionService>();
 
+        services.Configure<PaymentGatewayOptions>(configuration.GetSection("PaymentGateway"));
+        services.AddScoped<MockPaymentGateway>();
+        services.AddScoped<IdempotencyStore>();
+        services.AddScoped<IPaymentGateway, IdempotentPaymentGateway>();
+
         return services;
     }
 }
