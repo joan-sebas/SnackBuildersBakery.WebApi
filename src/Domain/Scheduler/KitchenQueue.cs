@@ -32,15 +32,7 @@ public sealed class KitchenQueue
     public OrderItem? SelectNext(DateTimeOffset now)
     {
         return _items
-            .Select(item => new KitchenQueueCandidate(
-                item,
-                _agingPolicy.CalculateScore(item.PriorityLevel, item.EnqueuedAt, now)))
-            .OrderByDescending(candidate => candidate.Score)
-            .ThenBy(candidate => candidate.Item.PriorityLevel)
-            .ThenBy(candidate => candidate.Item.EnqueuedAt)
-            .Select(candidate => candidate.Item)
+            .OrderBy(item => SelectionRank.For(_agingPolicy, item.PriorityLevel, item.EnqueuedAt, now))
             .FirstOrDefault();
     }
-
-    private sealed record KitchenQueueCandidate(OrderItem Item, decimal Score);
 }
