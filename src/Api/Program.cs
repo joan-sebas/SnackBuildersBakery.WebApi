@@ -21,8 +21,10 @@ builder.Services.AddOpenApi();
 var app = builder.Build();
 
 // Seed the baseline menu and rehydrate the in-memory scheduler from persisted order items.
-await using (var scope = app.Services.CreateAsyncScope())
+// Skipped in the Testing environment so integration tests do not require a running database.
+if (!app.Environment.IsEnvironment("Testing"))
 {
+    await using var scope = app.Services.CreateAsyncScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await MenuItemSeed.SeedAsync(db);
 
