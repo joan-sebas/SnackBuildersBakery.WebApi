@@ -1,5 +1,6 @@
 using Api.Contracts;
 using Api.Idempotency;
+using Api.Metrics;
 using Application;
 using Domain;
 using System.Text.Json;
@@ -16,6 +17,7 @@ internal static class PaymentEndpoints
             PayOrderBody body,
             PayOrderUseCase uc,
             IIdempotencyStore idempotency,
+            SnackBuildersMetrics metrics,
             CancellationToken ct) =>
         {
             if (string.IsNullOrWhiteSpace(body.Currency) || body.Currency.Length != 3)
@@ -54,6 +56,7 @@ internal static class PaymentEndpoints
                 await idempotency.SaveAsync(idempotencyKey.Value,
                     JsonSerializer.Serialize(response), statusCode, ct);
 
+            metrics.RecordPayment(result.IsSuccess);
             return Results.Json(response, statusCode: statusCode);
         }).WithTags("Payments");
 
