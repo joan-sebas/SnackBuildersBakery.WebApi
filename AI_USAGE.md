@@ -1,60 +1,45 @@
 # AI-Assisted Development
 
-This project is being built collaboratively with AI development tools. This document records how those tools were used and how output was validated.
-
-The objective is practical transparency: AI accelerated execution, while technical direction and acceptance remained controlled by the developer.
-
----
+This project used AI development tools as implementation and review accelerators. The
+developer retained ownership of scope, architecture, acceptance criteria, review gates,
+and final approval.
 
 ## Tools Used
 
-- **Claude (Anthropic):** architecture exploration, ADR drafting support, and design trade-off analysis.
-- **Claude Code tooling:** implementation support for scaffolding, repetitive wiring, and documentation structure.
-- **Editor assistance tools:** autocomplete and routine snippet completion for non-critical code patterns.
+- Claude and Claude Code-style workflows for planning, implementation pairing, and review.
+- Codex for local repository edits, terminal-driven validation, and documentation passes.
+- Editor completion for routine syntax and repetitive boilerplate.
 
----
+## How AI Assisted
 
-## Where AI Helped
+- Helped translate milestone prompts into file plans and incremental implementation steps.
+- Drafted and refined Clean Architecture scaffolding, API wiring, and test structure.
+- Suggested edge cases for domain invariants, scheduler behavior, idempotency, and error handling.
+- Generated initial Mermaid diagrams, ADR drafts, and README structure.
+- Supported review passes for SOLID boundaries, dependency direction, and hidden hardcoding.
+- Assisted with Docker, CI, observability, and delivery documentation.
 
-- Generating initial project scaffolding and repository structure
-- Drafting ADR and architecture-document templates
-- Converting architecture descriptions into Mermaid diagram syntax
-- Producing baseline templates for pull requests and repository workflows
-- Suggesting test structure and edge-case coverage candidates
-- Improving wording consistency in technical documentation
+## Human-Controlled Decisions
 
----
+- Stack selection and architecture boundaries.
+- Domain rules, scheduling policy, and pay-first flow.
+- Issue scope, task ordering, and acceptance criteria.
+- Whether diffs were accepted, revised, split, or rejected.
+- Merge readiness, release readiness, and final delivery approval.
 
-## What Was Owned by the Developer
+## Verification Performed
 
-- Stack and architecture choices, including rationale
-- Scope boundaries and out-of-scope decisions
-- Domain model direction and scheduling constraints
-- Acceptance criteria per issue and per-task gating
-- Final review and approval of all changes merged to `main`
+- `dotnet build SnackBuilders.slnx`.
+- `dotnet test SnackBuilders.slnx --no-build`.
+- API integration tests with Testcontainers Postgres.
+- EF Core migration checks against Postgres.
+- Manual review of dependency direction and source-control hygiene.
+- Documentation review for English-only wording, no confidential text, and no real secrets.
 
----
+## Guardrails
 
-## How AI Output Was Verified
-
-- File plans and diffs were reviewed before commit
-- Build and test checks were executed as quality gates
-- Outputs were checked against Clean Architecture dependency direction
-- Suggested changes conflicting with constraints or scope were rejected
-- Repository rules (English-only, no hardcoded business tuning values, no confidential text) were enforced during review
-
----
-
-## Ongoing Log
-
-This section is updated as milestones progress.
-
-### Entry Template
-
-- Milestone:
-- Issue:
-- Task:
-- AI assistance summary:
-- Human review focus:
-- Verification evidence:
-
+- AI output was not treated as authoritative.
+- Repository rules remained the source of truth for code style, language, and delivery gates.
+- Business tuning values were kept in configuration.
+- Production code avoids direct wall-clock access and reads time through `TimeProvider`.
+- Secrets and deployment-specific credentials are represented only as placeholders.

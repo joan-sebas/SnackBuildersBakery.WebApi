@@ -5,6 +5,7 @@ using Api.Health;
 using Api.Metrics;
 using Application;
 using Infrastructure;
+using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 using Serilog;
 using Serilog.Formatting.Compact;
@@ -46,6 +47,7 @@ if (!app.Environment.IsEnvironment("Testing"))
 {
     await using var scope = app.Services.CreateAsyncScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    await db.Database.MigrateAsync();
     await MenuItemSeed.SeedAsync(db);
 
     var reconstruction = scope.ServiceProvider.GetRequiredService<SchedulerReconstructionService>();
