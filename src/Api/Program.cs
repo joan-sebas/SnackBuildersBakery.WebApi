@@ -4,10 +4,17 @@ using Api.ErrorHandling;
 using Application;
 using Infrastructure;
 using Scalar.AspNetCore;
+using Serilog;
+using Serilog.Formatting.Compact;
 using System.Diagnostics;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((ctx, cfg) =>
+    cfg.ReadFrom.Configuration(ctx.Configuration)
+       .Enrich.FromLogContext()
+       .WriteTo.Console(new CompactJsonFormatter()));
 
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApplication();
