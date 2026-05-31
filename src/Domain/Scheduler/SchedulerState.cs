@@ -22,6 +22,14 @@ public sealed record SchedulerItemState(
         ReadyAt = now,
         SlotId = null
     };
+
+    public SchedulerItemState StartBaking(DateTimeOffset now, DateTimeOffset bakingEndsAt, Guid slotId) => this with
+    {
+        Status = OrderItemStatus.Baking,
+        StartedBakingAt = now,
+        BakingEndsAt = bakingEndsAt,
+        SlotId = slotId
+    };
 }
 
 public sealed record SchedulerSlotState(
@@ -34,6 +42,25 @@ public sealed record SchedulerSlotState(
 {
     public bool BakeFinished(DateTimeOffset now)
         => Status == OvenSlotStatus.Baking && BakingEndsAt is { } endsAt && endsAt <= now;
+
+    public bool CanStartBaking(DateTimeOffset now)
+        => Status == OvenSlotStatus.Free && AvailableAt <= now;
+
+    public SchedulerSlotState StartBaking(Guid orderItemId, DateTimeOffset bakingEndsAt)
+    {
+        if (Status != OvenSlotStatus.Free)
+        {
+            throw new InvalidOvenSlotTransitionError(Status, OvenSlotStatus.Baking);
+        }
+
+        return this with
+        {
+            Status = OvenSlotStatus.Baking,
+            AvailableAt = bakingEndsAt,
+            OrderItemId = orderItemId,
+            BakingEndsAt = bakingEndsAt
+        };
+    }
 
     public SchedulerSlotState IntoTurnover(TimeSpan turnover)
     {
