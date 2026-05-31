@@ -7,11 +7,11 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using Testcontainers.PostgreSql;
 
 namespace Api.IntegrationTests;
 
@@ -80,30 +80,18 @@ public sealed class ProblemDetailsTests(ProblemDetailsApiFactory factory) : ICla
     }
 }
 
-public sealed class ProblemDetailsApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
+public sealed class ProblemDetailsApiFactory : WebApplicationFactory<Program>
 {
-#pragma warning disable CS0618
-    private readonly PostgreSqlContainer _container = new PostgreSqlBuilder()
-        .WithImage("postgres:16-alpine")
-        .Build();
-#pragma warning restore CS0618
-
-    public async Task InitializeAsync()
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        await _container.StartAsync();
-
-        var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseNpgsql(_container.GetConnectionString())
-            .Options;
-
-        await using var db = new AppDbContext(options);
-        await db.Database.MigrateAsync();
-    }
-
-    public new async Task DisposeAsync()
-    {
-        await base.DisposeAsync();
-        await _container.DisposeAsync();
+        builder.UseEnvironment("Testing");
+        builder.ConfigureTestServices(services =>
+        {
+            // Replace Postgres with in-memory; no database interaction in these tests.
+            var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(DbContextOptions<AppDbContext>));
+            if (descriptor is not null) services.Remove(descriptor);
+            services.AddDbContext<AppDbContext>(o => o.UseInMemoryDatabase($"TestDb-{Guid.NewGuid()}"));
+        });
     }
 
     public HttpClient CreateClientWithEndpoint(Action<IEndpointRouteBuilder> mapEndpoints)
@@ -117,17 +105,5 @@ public sealed class ProblemDetailsApiFactory : WebApplicationFactory<Program>, I
                 app.UseEndpoints(mapEndpoints);
             });
         }).CreateClient();
-    }
-
-    protected override void ConfigureWebHost(IWebHostBuilder builder)
-    {
-        builder.UseEnvironment("Testing");
-        builder.ConfigureAppConfiguration(config =>
-        {
-            config.AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["ConnectionStrings:SnackBuildersDb"] = _container.GetConnectionString()
-            });
-        });
     }
 }
