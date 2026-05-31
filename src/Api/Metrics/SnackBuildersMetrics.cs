@@ -95,34 +95,15 @@ public static class MetricsServiceCollectionExtensions
     {
         services.AddMetrics();
         services.AddSingleton<SnackBuildersMetrics>();
-        services.DecorateSchedulerCoordinator();
+
+        // Decorate the concrete coordinator registered by Infrastructure. Registering the
+        // interface again here wins by last-registration, so all consumers get the metered one.
+        services.AddSingleton<ISchedulerCoordinator>(sp =>
+            new MeteredSchedulerCoordinator(
+                sp.GetRequiredService<SchedulerCoordinator>(),
+                sp.GetRequiredService<SnackBuildersMetrics>()));
+
         return services;
-    }
-
-    private static void DecorateSchedulerCoordinator(this IServiceCollection services)
-    {
-        // Keep metrics at the composition root instead of changing Application contracts.
-        var descriptor = services.LastOrDefault(service => service.ServiceType == typeof(ISchedulerCoordinator))
-            ?? throw new InvalidOperationException($"{nameof(ISchedulerCoordinator)} must be registered before metrics.");
-
-        services.Remove(descriptor);
-        services.Add(ServiceDescriptor.Describe(
-            typeof(ISchedulerCoordinator),
-            provider => new MeteredSchedulerCoordinator(
-                (ISchedulerCoordinator)CreateInner(provider, descriptor),
-                provider.GetRequiredService<SnackBuildersMetrics>()),
-            descriptor.Lifetime));
-    }
-
-    private static object CreateInner(IServiceProvider provider, ServiceDescriptor descriptor)
-    {
-        if (descriptor.ImplementationInstance is not null)
-            return descriptor.ImplementationInstance;
-
-        if (descriptor.ImplementationFactory is not null)
-            return descriptor.ImplementationFactory(provider)!;
-
-        return ActivatorUtilities.CreateInstance(provider, descriptor.ImplementationType!);
     }
 }
 
