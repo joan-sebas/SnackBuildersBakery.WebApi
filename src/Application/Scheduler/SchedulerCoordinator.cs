@@ -21,6 +21,9 @@ public sealed class SchedulerCoordinator : ISchedulerCoordinator, IDisposable
 
     public SchedulerState GetSnapshot() => Volatile.Read(ref _state);
 
+    public IReadOnlyDictionary<Guid, DateTimeOffset> EstimateReadyTimes()
+        => _scheduler.EstimateReadyTimes(Volatile.Read(ref _state), _timeProvider.GetUtcNow());
+
     public Task<SchedulerState> EnqueueAsync(EnqueuedItem item, CancellationToken cancellationToken = default)
         => MutateAsync((state, now) => Append(state, item, now), cancellationToken);
 

@@ -25,6 +25,64 @@ public sealed class KitchenScheduler(ISchedulerConfigProvider configProvider, IA
         return new SchedulerState(items, slots);
     }
 
+    public IReadOnlyDictionary<Guid, DateTimeOffset> EstimateReadyTimes(SchedulerState state, DateTimeOffset now)
+    {
+        var settings = configProvider.Settings;
+        var estimates = new Dictionary<Guid, DateTimeOffset>();
+
+        foreach (var item in state.Items)
+        {
+            if (item.Status == OrderItemStatus.Baking && item.BakingEndsAt is { } endsAt)
+            {
+                estimates[item.OrderItemId] = endsAt;
+            }
+        }
+
+        var slotFreeTimes = state.Slots.Select(slot => NextFreeTime(slot, settings.Turnover)).ToList();
+        if (slotFreeTimes.Count == 0)
+        {
+            return estimates;
+        }
+
+        var queued = state.Items
+            .Where(item => item.Status == OrderItemStatus.Queued)
+            .OrderBy(item => SelectionRank.For(agingPolicy, item.PriorityLevel, item.EnqueuedAt, now));
+
+        foreach (var item in queued)
+        {
+            var slotIndex = EarliestSlot(slotFreeTimes);
+            var startAt = Max(slotFreeTimes[slotIndex], now);
+            var readyAt = startAt + settings.BakeTimes[item.SnackType];
+
+            estimates[item.OrderItemId] = readyAt;
+            slotFreeTimes[slotIndex] = readyAt + settings.Turnover;
+        }
+
+        return estimates;
+    }
+
+    private static DateTimeOffset NextFreeTime(SchedulerSlotState slot, TimeSpan turnover)
+        => slot.Status == OvenSlotStatus.Baking && slot.BakingEndsAt is { } endsAt
+            ? endsAt + turnover
+            : slot.AvailableAt;
+
+    private static int EarliestSlot(List<DateTimeOffset> slotFreeTimes)
+    {
+        var earliest = 0;
+        for (var index = 1; index < slotFreeTimes.Count; index++)
+        {
+            if (slotFreeTimes[index] < slotFreeTimes[earliest])
+            {
+                earliest = index;
+            }
+        }
+
+        return earliest;
+    }
+
+    private static DateTimeOffset Max(DateTimeOffset left, DateTimeOffset right)
+        => left > right ? left : right;
+
     private void Assign(
         List<SchedulerItemState> items,
         List<SchedulerSlotState> slots,

@@ -10,6 +10,8 @@ public interface ISchedulerCoordinator
 {
     SchedulerState GetSnapshot();
 
+    IReadOnlyDictionary<Guid, DateTimeOffset> EstimateReadyTimes();
+
     Task<SchedulerState> EnqueueAsync(EnqueuedItem item, CancellationToken cancellationToken = default);
 
     Task<SchedulerState> ReconcileAsync(CancellationToken cancellationToken = default);
