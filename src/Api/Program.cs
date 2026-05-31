@@ -1,9 +1,18 @@
+using Api.ErrorHandling;
 using Infrastructure;
+using System.Diagnostics;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddInfrastructure(builder.Configuration);
-builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<ProblemDetailsHandler>();
+builder.Services.AddProblemDetails(options =>
+{
+    options.CustomizeProblemDetails = context =>
+    {
+        context.ProblemDetails.Extensions["traceId"] = Activity.Current?.Id ?? context.HttpContext.TraceIdentifier;
+    };
+});
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
@@ -27,3 +36,5 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 
 app.Run();
+
+public partial class Program;
