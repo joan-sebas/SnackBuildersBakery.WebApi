@@ -1,0 +1,47 @@
+namespace Domain;
+
+public sealed class MenuItem
+{
+    public MenuItem(Guid id, string name, SnackType snackType, Money price)
+    {
+        Id = id == Guid.Empty ? throw new ArgumentException("Menu item id cannot be empty.", nameof(id)) : id;
+        Name = NormalizeName(name);
+        SnackType = snackType;
+        Price = price;
+    }
+
+    public Guid Id { get; }
+
+    public string Name { get; private set; }
+
+    public SnackType SnackType { get; }
+
+    public Money Price { get; private set; }
+
+    public bool IsRemoved { get; private set; }
+
+    public void Rename(string name)
+    {
+        Name = NormalizeName(name);
+    }
+
+    public void Reprice(Money price)
+    {
+        Price = price;
+    }
+
+    public void Remove()
+    {
+        IsRemoved = true;
+    }
+
+    private static string NormalizeName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            throw new ArgumentException("Menu item name is required.", nameof(name));
+        }
+
+        return name.Trim();
+    }
+}
