@@ -24,9 +24,12 @@ public sealed class Order
         }
     }
 
-    public Guid Id { get; }
+    // Parameterless constructor required for EF Core materialization.
+    private Order() { _items = []; }
 
-    public PriorityLevel PriorityLevel { get; }
+    public Guid Id { get; private set; }
+
+    public PriorityLevel PriorityLevel { get; private set; }
 
     public IReadOnlyList<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
 
