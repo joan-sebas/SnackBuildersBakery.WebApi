@@ -1,3 +1,4 @@
+using Api.Auth;
 using Api.ErrorHandling;
 using Infrastructure;
 using System.Diagnostics;
@@ -5,6 +6,8 @@ using System.Diagnostics;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddRoleAuthentication(builder.Configuration);
+builder.Services.AddRoleAuthorization();
 builder.Services.AddExceptionHandler<ProblemDetailsHandler>();
 builder.Services.AddProblemDetails(options =>
 {
@@ -31,6 +34,8 @@ await using (var scope = app.Services.CreateAsyncScope())
 // unhandled exceptions. UseStatusCodePages covers 404 and other non-exception status codes.
 app.UseExceptionHandler();
 app.UseStatusCodePages();
+app.UseAuthentication();
+app.UseAuthorization();
 
 if (app.Environment.IsDevelopment())
     app.MapOpenApi();
