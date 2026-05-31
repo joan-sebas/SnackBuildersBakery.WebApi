@@ -104,7 +104,8 @@ public sealed class KitchenQueueTests
                     [PriorityLevel.WalkIn] = 10
                 },
                 AgingFactor: 1m,
-                Capacity: 4,
+                OvensCount: 2,
+                TraysPerOven: 3,
                 Turnover: TimeSpan.FromMinutes(2),
                 new Dictionary<SnackType, TimeSpan>()));
     }

@@ -82,7 +82,8 @@ public sealed class SelectionPropertyTests
                     [PriorityLevel.WalkIn] = walkInWeight
                 },
                 agingFactor,
-                Capacity: 4,
+                OvensCount: 2,
+                TraysPerOven: 3,
                 Turnover: TimeSpan.FromMinutes(2),
                 new Dictionary<SnackType, TimeSpan>()));
     }

@@ -168,8 +168,9 @@ public sealed class ReconcileReadyTests
             new SchedulerSettings(
                 new Dictionary<PriorityLevel, int>(),
                 AgingFactor: 1m,
-                Capacity: 4,
-                turnover,
+                OvensCount: 2,
+                TraysPerOven: 3,
+                Turnover: turnover,
                 new Dictionary<SnackType, TimeSpan>()));
     }
 

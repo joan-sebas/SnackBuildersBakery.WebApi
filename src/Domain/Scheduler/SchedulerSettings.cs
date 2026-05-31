@@ -3,6 +3,10 @@ namespace Domain;
 public sealed record SchedulerSettings(
     IReadOnlyDictionary<PriorityLevel, int> TierWeights,
     decimal AgingFactor,
-    int Capacity,
+    int OvensCount,
+    int TraysPerOven,
     TimeSpan Turnover,
-    IReadOnlyDictionary<SnackType, TimeSpan> BakeTimes);
+    IReadOnlyDictionary<SnackType, TimeSpan> BakeTimes)
+{
+    public int Capacity => OvensCount * TraysPerOven;
+}
