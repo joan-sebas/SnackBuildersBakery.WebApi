@@ -16,7 +16,7 @@ public sealed class ReconcileReadyTests
         var state = CreateState(
             CreateBakingItem(itemId, slotId, bakingEndsAt),
             CreateBakingSlot(slotId, ovenId, itemId, bakingEndsAt));
-        var scheduler = new KitchenScheduler(CreateConfigProvider(turnover: TimeSpan.FromMinutes(3)));
+        var scheduler = CreateScheduler(turnover: TimeSpan.FromMinutes(3));
 
         var reconciled = scheduler.Reconcile(state, timeProvider.GetUtcNow());
 
@@ -41,7 +41,7 @@ public sealed class ReconcileReadyTests
         var item = CreateBakingItem(itemId, slotId, bakingEndsAt);
         var slot = CreateBakingSlot(slotId, ovenId, itemId, bakingEndsAt);
         var state = CreateState(item, slot);
-        var scheduler = new KitchenScheduler(CreateConfigProvider(turnover: TimeSpan.FromMinutes(3)));
+        var scheduler = CreateScheduler(turnover: TimeSpan.FromMinutes(3));
 
         var reconciled = scheduler.Reconcile(state, timeProvider.GetUtcNow());
 
@@ -63,7 +63,7 @@ public sealed class ReconcileReadyTests
             OrderItemId: null,
             BakingEndsAt: null);
         var state = new SchedulerState(Array.Empty<SchedulerItemState>(), new[] { slot });
-        var scheduler = new KitchenScheduler(CreateConfigProvider(turnover: TimeSpan.FromMinutes(3)));
+        var scheduler = CreateScheduler(turnover: TimeSpan.FromMinutes(3));
 
         var reconciled = scheduler.Reconcile(state, timeProvider.GetUtcNow());
 
@@ -85,7 +85,7 @@ public sealed class ReconcileReadyTests
             OrderItemId: null,
             BakingEndsAt: null);
         var state = new SchedulerState(Array.Empty<SchedulerItemState>(), new[] { slot });
-        var scheduler = new KitchenScheduler(CreateConfigProvider(turnover: TimeSpan.FromMinutes(3)));
+        var scheduler = CreateScheduler(turnover: TimeSpan.FromMinutes(3));
 
         var reconciled = scheduler.Reconcile(state, timeProvider.GetUtcNow());
 
@@ -103,7 +103,7 @@ public sealed class ReconcileReadyTests
         var originalItem = CreateBakingItem(itemId, slotId, bakingEndsAt);
         var originalSlot = CreateBakingSlot(slotId, ovenId, itemId, bakingEndsAt);
         var state = CreateState(originalItem, originalSlot);
-        var scheduler = new KitchenScheduler(CreateConfigProvider(turnover: TimeSpan.FromMinutes(3)));
+        var scheduler = CreateScheduler(turnover: TimeSpan.FromMinutes(3));
 
         var reconciled = scheduler.Reconcile(state, timeProvider.GetUtcNow());
 
@@ -122,7 +122,7 @@ public sealed class ReconcileReadyTests
         var state = CreateState(
             CreateBakingItem(itemId, slotId, bakingEndsAt),
             CreateBakingSlot(slotId, ovenId, itemId, bakingEndsAt));
-        var scheduler = new KitchenScheduler(CreateConfigProvider(turnover: TimeSpan.FromMinutes(3)));
+        var scheduler = CreateScheduler(turnover: TimeSpan.FromMinutes(3));
 
         var once = scheduler.Reconcile(state, bakingEndsAt);
         var twice = scheduler.Reconcile(once, bakingEndsAt);
@@ -160,6 +160,12 @@ public sealed class ReconcileReadyTests
             AvailableAt: bakingEndsAt,
             OrderItemId: itemId,
             BakingEndsAt: bakingEndsAt);
+    }
+
+    private static KitchenScheduler CreateScheduler(TimeSpan turnover)
+    {
+        var provider = CreateConfigProvider(turnover);
+        return new KitchenScheduler(provider, new LinearAgingPolicy(provider));
     }
 
     private static ISchedulerConfigProvider CreateConfigProvider(TimeSpan turnover)
