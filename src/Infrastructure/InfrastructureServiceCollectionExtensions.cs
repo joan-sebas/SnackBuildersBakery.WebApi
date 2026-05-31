@@ -20,6 +20,7 @@ public static class InfrastructureServiceCollectionExtensions
 
         services.Configure<SchedulerOptions>(configuration.GetSection("Scheduler"));
         services.AddSingleton<ISchedulerConfigProvider, OptionsSchedulerConfigProvider>();
+        services.AddSingleton<IAgingPolicy, LinearAgingPolicy>();
         services.AddSingleton<KitchenScheduler>();
         services.AddSingleton<ISchedulerCoordinator, SchedulerCoordinator>();
         services.AddSingleton(TimeProvider.System);
