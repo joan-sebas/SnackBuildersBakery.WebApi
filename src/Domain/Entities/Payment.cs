@@ -11,15 +11,18 @@ public sealed class Payment
         Status = PaymentStatus.Pending;
     }
 
-    public Guid Id { get; }
+    // Parameterless constructor required for EF Core materialization.
+    private Payment() { }
 
-    public Guid OrderId { get; }
+    public Guid Id { get; private set; }
 
-    public Money AmountDue { get; }
+    public Guid OrderId { get; private set; }
+
+    public Money AmountDue { get; private set; }
 
     public Money? AmountReceived { get; private set; }
 
-    public PaymentMethod Method { get; }
+    public PaymentMethod Method { get; private set; }
 
     public PaymentStatus Status { get; private set; }
 

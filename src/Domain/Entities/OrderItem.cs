@@ -12,13 +12,16 @@ public sealed class OrderItem
         EnqueuedAt = enqueuedAt;
     }
 
-    public Guid Id { get; }
+    // Parameterless constructor required for EF Core materialization.
+    private OrderItem() { }
 
-    public Guid MenuItemId { get; }
+    public Guid Id { get; private set; }
 
-    public SnackType SnackType { get; }
+    public Guid MenuItemId { get; private set; }
 
-    public Money UnitPrice { get; }
+    public SnackType SnackType { get; private set; }
+
+    public Money UnitPrice { get; private set; }
 
     public OrderItemStatus Status { get; private set; }
 
