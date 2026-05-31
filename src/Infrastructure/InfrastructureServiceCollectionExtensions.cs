@@ -22,7 +22,8 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<ISchedulerConfigProvider, OptionsSchedulerConfigProvider>();
         services.AddSingleton<IAgingPolicy, LinearAgingPolicy>();
         services.AddSingleton<KitchenScheduler>();
-        services.AddSingleton<ISchedulerCoordinator, SchedulerCoordinator>();
+        services.AddSingleton<SchedulerCoordinator>();
+        services.AddSingleton<ISchedulerCoordinator>(sp => sp.GetRequiredService<SchedulerCoordinator>());
         services.AddSingleton(TimeProvider.System);
 
         services.AddTransient<SchedulerReconstructionService>();
