@@ -33,10 +33,19 @@ internal static class PaymentEndpoints
                         statusCode: cached.Value.StatusCode);
             }
 
-            var result = await uc.ExecuteAsync(
-                new PayOrderRequest(id, body.Method, new Money(body.Amount, body.Currency),
-                    idempotencyKey ?? Guid.NewGuid()),
-                ct);
+            PayOrderResult result;
+            try
+            {
+                result = await uc.ExecuteAsync(
+                    new PayOrderRequest(id, body.Method, new Money(body.Amount, body.Currency),
+                        idempotencyKey ?? Guid.NewGuid()),
+                    ct);
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
+            {
+                return Results.Problem(statusCode: StatusCodes.Status404NotFound, title: "Not found",
+                    detail: ex.Message);
+            }
 
             var response = new PayOrderResponse(result.IsSuccess, result.FailureReason);
             var statusCode = result.IsSuccess ? StatusCodes.Status200OK : StatusCodes.Status402PaymentRequired;

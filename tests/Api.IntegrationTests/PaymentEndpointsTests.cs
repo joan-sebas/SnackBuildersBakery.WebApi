@@ -40,7 +40,7 @@ public sealed class PaymentEndpointsTests(ApiDbFactory factory)
     }
 
     [Fact]
-    public async Task PayOrder_SameIdempotencyKey_ReturnsSameResult()
+    public async Task PayOrder_SameIdempotencyKey_ReturnsConsistentStatus()
     {
         using var client = PublicClient();
         var orderId = await PlaceOrderAsync(client);
@@ -51,9 +51,10 @@ public sealed class PaymentEndpointsTests(ApiDbFactory factory)
         var first = await client.PostAsJsonAsync($"/v1/orders/{orderId}/payment", body);
         var second = await client.PostAsJsonAsync($"/v1/orders/{orderId}/payment", body);
 
-        var r1 = await first.Content.ReadFromJsonAsync<PayOrderResponse>(TestJsonOptions.Default);
-        var r2 = await second.Content.ReadFromJsonAsync<PayOrderResponse>(TestJsonOptions.Default);
-        r2!.IsSuccess.Should().Be(r1!.IsSuccess);
+        // Both calls with the same key must produce the same status code.
+        // The second must not double-charge (409 Conflict would indicate a second charge attempt).
+        second.StatusCode.Should().Be(first.StatusCode);
+        second.StatusCode.Should().BeOneOf(HttpStatusCode.OK, HttpStatusCode.PaymentRequired);
     }
 
     [Fact]
