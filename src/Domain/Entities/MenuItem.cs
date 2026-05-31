@@ -10,11 +10,14 @@ public sealed class MenuItem
         Price = price;
     }
 
-    public Guid Id { get; }
+    // Parameterless constructor required for EF Core materialization.
+    private MenuItem() { }
 
-    public string Name { get; private set; }
+    public Guid Id { get; private set; }
 
-    public SnackType SnackType { get; }
+    public string Name { get; private set; } = string.Empty;
+
+    public SnackType SnackType { get; private set; }
 
     public Money Price { get; private set; }
 
