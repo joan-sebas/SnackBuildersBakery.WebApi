@@ -4,7 +4,8 @@ namespace Application;
 
 /// <summary>
 /// An already-paid order throws <see cref="OrderAlreadyPaidError"/> before the gateway
-/// is called, preventing a double-charge. Full idempotency-key deduplication is deferred to M4.
+/// is called, preventing a double-charge. Endpoint and gateway idempotency handle
+/// duplicate payment attempts before re-executing side effects.
 /// </summary>
 public sealed class PayOrderUseCase(
     IOrderRepository orders,
