@@ -51,6 +51,9 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 
 app.MapMenuEndpoints();
+app.MapOrderEndpoints();
+app.MapPaymentEndpoints();
+app.MapKitchenEndpoints();
 
 app.Run();
 
