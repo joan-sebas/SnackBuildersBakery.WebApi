@@ -3,6 +3,7 @@ using Api.Endpoints;
 using Api.ErrorHandling;
 using Api.Health;
 using Api.Metrics;
+using Api.Scheduler;
 using Application;
 using Infrastructure;
 using Microsoft.EntityFrameworkCore;
@@ -34,6 +35,12 @@ builder.Services.AddProblemDetails(options =>
 builder.Services.AddOpenApi();
 builder.Services.AddSnackBuildersMetrics();
 builder.Services.AddApiHealthChecks();
+
+builder.Services.Configure<KitchenWorkerOptions>(builder.Configuration.GetSection(KitchenWorkerOptions.SectionName));
+// The reconciliation worker advances time-based scheduler state; the Testing host drives the
+// clock from tests instead, so it is not registered there.
+if (!builder.Environment.IsEnvironment("Testing"))
+    builder.Services.AddHostedService<KitchenReconciliationWorker>();
 
 // Serialize enums as strings for a self-describing API contract.
 builder.Services.ConfigureHttpJsonOptions(o =>
