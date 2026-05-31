@@ -1,11 +1,15 @@
 using Api.Auth;
+using Api.Endpoints;
 using Api.ErrorHandling;
+using Application;
 using Infrastructure;
 using System.Diagnostics;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddApplication();
 builder.Services.AddRoleAuthentication(builder.Configuration);
 builder.Services.AddRoleAuthorization();
 builder.Services.AddExceptionHandler<ProblemDetailsHandler>();
@@ -17,6 +21,10 @@ builder.Services.AddProblemDetails(options =>
     };
 });
 builder.Services.AddOpenApi();
+
+// Serialize enums as strings for a self-describing API contract.
+builder.Services.ConfigureHttpJsonOptions(o =>
+    o.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
 var app = builder.Build();
 
@@ -41,6 +49,8 @@ app.UseAuthorization();
 
 if (app.Environment.IsDevelopment())
     app.MapOpenApi();
+
+app.MapMenuEndpoints();
 
 app.Run();
 
