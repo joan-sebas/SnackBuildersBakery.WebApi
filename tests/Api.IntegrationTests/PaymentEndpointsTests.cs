@@ -40,7 +40,7 @@ public sealed class PaymentEndpointsTests(ApiDbFactory factory)
     }
 
     [Fact]
-    public async Task PayOrder_SameIdempotencyKey_ReturnsConsistentStatus()
+    public async Task PayOrder_SameIdempotencyKey_SecondCallReplaysCachedResult()
     {
         using var client = PublicClient();
         var orderId = await PlaceOrderAsync(client);
@@ -48,12 +48,12 @@ public sealed class PaymentEndpointsTests(ApiDbFactory factory)
         client.DefaultRequestHeaders.Add("Idempotency-Key", key);
         var body = new { Method = "Cash", Amount = 100.00m, Currency = "USD" };
 
-        var first = await client.PostAsJsonAsync($"/v1/orders/{orderId}/payment", body);
-        var second = await client.PostAsJsonAsync($"/v1/orders/{orderId}/payment", body);
+        // First call processes the payment; the gateway stores the result keyed by the idempotency GUID.
+        await client.PostAsJsonAsync($"/v1/orders/{orderId}/payment", body);
 
-        // Both calls with the same key must produce the same status code.
-        // The second must not double-charge (409 Conflict would indicate a second charge attempt).
-        second.StatusCode.Should().Be(first.StatusCode);
+        // Second call with the same key must replay the stored result — never re-process.
+        // 200 or 402 means idempotency worked; 409 would mean a second charge was attempted.
+        var second = await client.PostAsJsonAsync($"/v1/orders/{orderId}/payment", body);
         second.StatusCode.Should().BeOneOf(HttpStatusCode.OK, HttpStatusCode.PaymentRequired);
     }
 

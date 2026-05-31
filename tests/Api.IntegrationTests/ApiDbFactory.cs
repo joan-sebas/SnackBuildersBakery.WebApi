@@ -49,7 +49,21 @@ public sealed class ApiDbFactory : WebApplicationFactory<Program>, IAsyncLifetim
                 ["Auth:ApiKeys:ManagerKey"] = ManagerKey,
                 ["Auth:ApiKeys:PublicKey"] = PublicKey,
                 ["Auth:Roles:Manager"] = "manager",
-                ["Auth:Roles:Public"] = "public"
+                ["Auth:Roles:Public"] = "public",
+                // Explicit scheduler values guard against content-root resolution misses in CI.
+                ["Scheduler:AgingFactor"] = "1.5",
+                ["Scheduler:OvensCount"] = "2",
+                ["Scheduler:TraysPerOven"] = "4",
+                ["Scheduler:Turnover"] = "00:00:30",
+                ["Scheduler:TierWeights:Vip"] = "10",
+                ["Scheduler:TierWeights:Delivery"] = "5",
+                ["Scheduler:TierWeights:WalkIn"] = "1",
+                ["Scheduler:BakeTimes:Cookie"] = "00:08:00",
+                ["Scheduler:BakeTimes:Pastry"] = "00:12:00",
+                ["Scheduler:BakeTimes:Bread"] = "00:20:00",
+                ["PaymentGateway:CashFailureRate"] = "0.0",
+                ["PaymentGateway:CardFailureRate"] = "0.0",
+                ["PaymentGateway:SimulatedLatencyMs"] = "0"
             }));
     }
 }
