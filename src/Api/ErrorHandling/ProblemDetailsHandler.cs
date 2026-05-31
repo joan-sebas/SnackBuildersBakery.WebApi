@@ -5,7 +5,7 @@ using System.Diagnostics;
 
 namespace Api.ErrorHandling;
 
-public sealed class ProblemDetailsHandler(IProblemDetailsService problemDetailsService) : IExceptionHandler
+internal sealed class ProblemDetailsHandler(IProblemDetailsService problemDetailsService) : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
     {
