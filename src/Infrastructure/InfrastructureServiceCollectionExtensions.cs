@@ -31,6 +31,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<MockPaymentGateway>();
         services.AddScoped<IdempotencyStore>();
         services.AddScoped<IPaymentGateway, IdempotentPaymentGateway>();
+        services.AddScoped<IIdempotencyStore, EndpointIdempotencyAdapter>();
 
         return services;
     }
