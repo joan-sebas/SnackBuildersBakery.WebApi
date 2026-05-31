@@ -18,16 +18,16 @@ public sealed class PaymentEndpointsTests(ApiDbFactory factory)
 
     private async Task<Guid> PlaceOrderAsync(HttpClient client)
     {
-        var items = await client.GetFromJsonAsync<List<MenuItemResponse>>("/v1/menu");
+        var items = await client.GetFromJsonAsync<List<MenuItemResponse>>("/v1/menu", TestJsonOptions.Default);
         var menuItemId = items!.First().Id;
         var placed = await client.PostAsJsonAsync("/v1/orders",
             new { PriorityLevel = "WalkIn", Lines = new[] { new { MenuItemId = menuItemId, Quantity = 1 } } });
-        var ticket = await placed.Content.ReadFromJsonAsync<TicketResponse>();
+        var ticket = await placed.Content.ReadFromJsonAsync<TicketResponse>(TestJsonOptions.Default);
         return ticket!.OrderId;
     }
 
     [Fact]
-    public async Task PayOrder_Success_Returns200AndIsSuccessTrue()
+    public async Task PayOrder_Success_Returns200OrPaymentRequired()
     {
         using var client = PublicClient();
         var orderId = await PlaceOrderAsync(client);
@@ -35,7 +35,7 @@ public sealed class PaymentEndpointsTests(ApiDbFactory factory)
 
         var response = await client.PostAsJsonAsync($"/v1/orders/{orderId}/payment", body);
         response.StatusCode.Should().BeOneOf(HttpStatusCode.OK, HttpStatusCode.PaymentRequired);
-        var result = await response.Content.ReadFromJsonAsync<PayOrderResponse>();
+        var result = await response.Content.ReadFromJsonAsync<PayOrderResponse>(TestJsonOptions.Default);
         result.Should().NotBeNull();
     }
 
@@ -49,11 +49,10 @@ public sealed class PaymentEndpointsTests(ApiDbFactory factory)
         var body = new { Method = "Cash", Amount = 100.00m, Currency = "USD" };
 
         var first = await client.PostAsJsonAsync($"/v1/orders/{orderId}/payment", body);
-        // A second call with the same key to a different order (key already used — replay)
         var second = await client.PostAsJsonAsync($"/v1/orders/{orderId}/payment", body);
 
-        var r1 = await first.Content.ReadFromJsonAsync<PayOrderResponse>();
-        var r2 = await second.Content.ReadFromJsonAsync<PayOrderResponse>();
+        var r1 = await first.Content.ReadFromJsonAsync<PayOrderResponse>(TestJsonOptions.Default);
+        var r2 = await second.Content.ReadFromJsonAsync<PayOrderResponse>(TestJsonOptions.Default);
         r2!.IsSuccess.Should().Be(r1!.IsSuccess);
     }
 
@@ -66,11 +65,10 @@ public sealed class PaymentEndpointsTests(ApiDbFactory factory)
 
         var first = await client.PostAsJsonAsync($"/v1/orders/{orderId}/payment", body);
         if (first.StatusCode != HttpStatusCode.OK)
-            return; // payment failed on first attempt — can't test double-pay path
+            return; // payment failed — cannot test double-pay path
 
         client.DefaultRequestHeaders.Add("Idempotency-Key", Guid.NewGuid().ToString());
         var second = await client.PostAsJsonAsync($"/v1/orders/{orderId}/payment", body);
-
         second.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
 

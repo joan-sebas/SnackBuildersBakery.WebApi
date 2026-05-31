@@ -18,7 +18,7 @@ public sealed class OrderEndpointsTests(ApiDbFactory factory)
 
     private async Task<Guid> GetFirstMenuItemIdAsync(HttpClient client)
     {
-        var items = await client.GetFromJsonAsync<List<MenuItemResponse>>("/v1/menu");
+        var items = await client.GetFromJsonAsync<List<MenuItemResponse>>("/v1/menu", TestJsonOptions.Default);
         return items!.First().Id;
     }
 
@@ -35,7 +35,7 @@ public sealed class OrderEndpointsTests(ApiDbFactory factory)
 
         var response = await client.PostAsJsonAsync("/v1/orders", body);
         response.StatusCode.Should().Be(HttpStatusCode.Created);
-        var ticket = await response.Content.ReadFromJsonAsync<TicketResponse>();
+        var ticket = await response.Content.ReadFromJsonAsync<TicketResponse>(TestJsonOptions.Default);
         ticket!.OrderId.Should().NotBeEmpty();
         ticket.TotalPrice.Should().BeGreaterThan(0);
         ticket.IsEstimateSubjectToPayment.Should().BeTrue();
@@ -80,8 +80,8 @@ public sealed class OrderEndpointsTests(ApiDbFactory factory)
         var first = await client.PostAsJsonAsync("/v1/orders", body);
         var second = await client.PostAsJsonAsync("/v1/orders", body);
 
-        var t1 = await first.Content.ReadFromJsonAsync<TicketResponse>();
-        var t2 = await second.Content.ReadFromJsonAsync<TicketResponse>();
+        var t1 = await first.Content.ReadFromJsonAsync<TicketResponse>(TestJsonOptions.Default);
+        var t2 = await second.Content.ReadFromJsonAsync<TicketResponse>(TestJsonOptions.Default);
         t2!.TicketId.Should().Be(t1!.TicketId);
         t2.OrderId.Should().Be(t1.OrderId);
     }
@@ -93,11 +93,11 @@ public sealed class OrderEndpointsTests(ApiDbFactory factory)
         var menuItemId = await GetFirstMenuItemIdAsync(client);
         var placed = await client.PostAsJsonAsync("/v1/orders",
             new { PriorityLevel = "WalkIn", Lines = new[] { new { MenuItemId = menuItemId, Quantity = 1 } } });
-        var ticket = await placed.Content.ReadFromJsonAsync<TicketResponse>();
+        var ticket = await placed.Content.ReadFromJsonAsync<TicketResponse>(TestJsonOptions.Default);
 
         var response = await client.GetAsync($"/v1/orders/{ticket!.OrderId}");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var tracking = await response.Content.ReadFromJsonAsync<TrackOrderResponse>();
+        var tracking = await response.Content.ReadFromJsonAsync<TrackOrderResponse>(TestJsonOptions.Default);
         tracking!.Items.Should().NotBeEmpty();
     }
 
