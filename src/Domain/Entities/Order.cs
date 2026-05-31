@@ -3,6 +3,7 @@ namespace Domain;
 public sealed class Order
 {
     private readonly List<OrderItem> _items;
+    private readonly List<IDomainEvent> _domainEvents = [];
 
     public Order(Guid id, PriorityLevel priorityLevel, IEnumerable<OrderItem> items)
     {
@@ -26,6 +27,12 @@ public sealed class Order
     public Guid Id { get; }
 
     public PriorityLevel PriorityLevel { get; }
+
+    public IReadOnlyList<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
+
+    public void ClearDomainEvents() => _domainEvents.Clear();
+
+    internal void RaiseDomainEvent(IDomainEvent domainEvent) => _domainEvents.Add(domainEvent);
 
     public OrderStatus Status { get; private set; }
 
