@@ -1,4 +1,5 @@
 using Api.Contracts;
+using Api.Idempotency;
 using Application;
 using System.Text.Json;
 
@@ -17,7 +18,7 @@ internal static class OrderEndpoints
             IIdempotencyStore idempotency,
             CancellationToken ct) =>
         {
-            var idempotencyKey = ReadIdempotencyKey(ctx);
+            var idempotencyKey = IdempotencyKeyReader.Read(ctx);
 
             if (idempotencyKey.HasValue)
             {
@@ -39,7 +40,8 @@ internal static class OrderEndpoints
             var response = ToTicketResponse(result.Ticket);
 
             if (idempotencyKey.HasValue)
-                await idempotency.SaveAsync(idempotencyKey.Value, JsonSerializer.Serialize(response), 201, ct);
+                await idempotency.SaveAsync(idempotencyKey.Value, JsonSerializer.Serialize(response),
+                    StatusCodes.Status201Created, ct);
 
             return Results.Created($"/v1/orders/{response.OrderId}", response);
         });
@@ -63,14 +65,6 @@ internal static class OrderEndpoints
         });
 
         return app;
-    }
-
-    private static Guid? ReadIdempotencyKey(HttpContext ctx)
-    {
-        if (ctx.Request.Headers.TryGetValue("Idempotency-Key", out var values)
-            && Guid.TryParse(values.FirstOrDefault(), out var key))
-            return key;
-        return null;
     }
 
     private static TicketResponse ToTicketResponse(Domain.Ticket ticket) =>

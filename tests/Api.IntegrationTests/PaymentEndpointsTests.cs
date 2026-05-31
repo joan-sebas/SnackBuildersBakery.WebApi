@@ -58,24 +58,20 @@ public sealed class PaymentEndpointsTests(ApiDbFactory factory)
     }
 
     [Fact]
-    public async Task PayOrder_AlreadyPaid_Returns409()
+    public async Task PayOrder_AlreadyPaid_Returns409Conflict()
     {
         using var client = PublicClient();
         var orderId = await PlaceOrderAsync(client);
         var body = new { Method = "Cash", Amount = 100.00m, Currency = "USD" };
 
-        // Force success by using cash with 0% failure rate; pay twice with different keys
-        await client.PostAsJsonAsync($"/v1/orders/{orderId}/payment", body);
+        var first = await client.PostAsJsonAsync($"/v1/orders/{orderId}/payment", body);
+        if (first.StatusCode != HttpStatusCode.OK)
+            return; // payment failed on first attempt — can't test double-pay path
 
-        // Add a second key to avoid idempotency replay
         client.DefaultRequestHeaders.Add("Idempotency-Key", Guid.NewGuid().ToString());
         var second = await client.PostAsJsonAsync($"/v1/orders/{orderId}/payment", body);
 
-        // Either already-paid conflict (409) or success replayed — depends on first call result
-        second.StatusCode.Should().BeOneOf(
-            HttpStatusCode.Conflict,
-            HttpStatusCode.OK,
-            HttpStatusCode.PaymentRequired);
+        second.StatusCode.Should().Be(HttpStatusCode.Conflict);
     }
 
     [Fact]

@@ -1,4 +1,5 @@
 using Api.Contracts;
+using Api.Idempotency;
 using Application;
 using Domain;
 using System.Text.Json;
@@ -9,7 +10,6 @@ internal static class PaymentEndpoints
 {
     internal static IEndpointRouteBuilder MapPaymentEndpoints(this IEndpointRouteBuilder app)
     {
-        // POST /v1/orders/{id}/payment — pay-first: on success items are enqueued.
         app.MapPost("/v1/orders/{id:guid}/payment", async Task<IResult> (
             Guid id,
             HttpContext ctx,
@@ -22,7 +22,7 @@ internal static class PaymentEndpoints
                 return Results.ValidationProblem(new Dictionary<string, string[]>
                     { ["currency"] = ["Currency must be a 3-letter ISO code."] });
 
-            var idempotencyKey = ReadIdempotencyKey(ctx);
+            var idempotencyKey = IdempotencyKeyReader.Read(ctx);
 
             if (idempotencyKey.HasValue)
             {
@@ -51,11 +51,4 @@ internal static class PaymentEndpoints
         return app;
     }
 
-    private static Guid? ReadIdempotencyKey(HttpContext ctx)
-    {
-        if (ctx.Request.Headers.TryGetValue("Idempotency-Key", out var values)
-            && Guid.TryParse(values.FirstOrDefault(), out var key))
-            return key;
-        return null;
-    }
 }
