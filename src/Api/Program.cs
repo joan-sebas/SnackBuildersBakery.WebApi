@@ -3,6 +3,7 @@ using Api.Endpoints;
 using Api.ErrorHandling;
 using Application;
 using Infrastructure;
+using Scalar.AspNetCore;
 using System.Diagnostics;
 using System.Text.Json.Serialization;
 
@@ -48,7 +49,10 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 if (app.Environment.IsDevelopment())
+{
     app.MapOpenApi();
+    app.MapScalarApiReference(options => options.WithTitle("Snack Builders API"));
+}
 
 app.MapMenuEndpoints();
 app.MapOrderEndpoints();
