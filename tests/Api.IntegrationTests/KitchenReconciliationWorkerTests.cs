@@ -20,7 +20,15 @@ public sealed class KitchenReconciliationWorkerTests
             coordinator, time, options, NullLogger<KitchenReconciliationWorker>.Instance);
 
         await worker.StartAsync(CancellationToken.None);
-        time.Advance(TimeSpan.FromSeconds(1));
+
+        // StartAsync does not wait for ExecuteAsync to register the timer, so advance the
+        // clock repeatedly with short real pauses until the worker has ticked at least once.
+        for (var attempt = 0; attempt < 50 && !coordinator.FirstReconcile.Task.IsCompleted; attempt++)
+        {
+            time.Advance(TimeSpan.FromSeconds(1));
+            await Task.Delay(20);
+        }
+
         await coordinator.FirstReconcile.Task.WaitAsync(TimeSpan.FromSeconds(5));
         await worker.StopAsync(CancellationToken.None);
 
