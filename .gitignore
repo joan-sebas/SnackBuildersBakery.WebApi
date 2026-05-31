@@ -2,15 +2,31 @@
 /_planning
 /logs
 
-# Build artifacts
+# Build output
 bin/
 obj/
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
 
-# User-specific files
-*.user
-*.suo
+# IDE and user files
+.idea/
+.vscode/
 .vs/
+*.user
+*.userosscache
+*.suo
+*.rsuser
 
-# Environment
+# Local configuration
 .env
+*.env.local
+appsettings.Local.json
+appsettings.*.Local.json
 
+# Packages and publish output
+packages/
+*.nupkg
+artifacts/
+publish/
