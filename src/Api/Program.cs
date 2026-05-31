@@ -1,6 +1,7 @@
 using Api.Auth;
 using Api.Endpoints;
 using Api.ErrorHandling;
+using Api.Health;
 using Api.Metrics;
 using Application;
 using Infrastructure;
@@ -31,6 +32,7 @@ builder.Services.AddProblemDetails(options =>
 });
 builder.Services.AddOpenApi();
 builder.Services.AddSnackBuildersMetrics();
+builder.Services.AddApiHealthChecks();
 
 // Serialize enums as strings for a self-describing API contract.
 builder.Services.ConfigureHttpJsonOptions(o =>
@@ -67,6 +69,7 @@ app.MapMenuEndpoints();
 app.MapOrderEndpoints();
 app.MapPaymentEndpoints();
 app.MapKitchenEndpoints();
+app.MapApiHealthChecks();
 
 app.Run();
 
