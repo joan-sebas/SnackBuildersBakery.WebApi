@@ -32,6 +32,7 @@ public static class OrderFactory
         }
 
         var order = new Order(orderId, priorityLevel, orderItems);
+        order.RaiseDomainEvent(new OrderPlaced(order.Id, order.PriorityLevel, enqueuedAt));
         var ticket = new Ticket(ticketId, order.Id, order.TotalPrice, estimatedReadyAt: null, isEstimateSubjectToPayment: true);
 
         return new OrderFactoryResult(order, ticket);
