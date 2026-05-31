@@ -1,5 +1,6 @@
 using Api.Contracts;
 using Api.Idempotency;
+using Api.Metrics;
 using Application;
 using System.Text.Json;
 
@@ -16,6 +17,7 @@ internal static class OrderEndpoints
             PlaceOrderBody body,
             PlaceOrderUseCase uc,
             IIdempotencyStore idempotency,
+            SnackBuildersMetrics metrics,
             CancellationToken ct) =>
         {
             var idempotencyKey = IdempotencyKeyReader.Read(ctx);
@@ -43,6 +45,7 @@ internal static class OrderEndpoints
                 await idempotency.SaveAsync(idempotencyKey.Value, JsonSerializer.Serialize(response),
                     StatusCodes.Status201Created, ct);
 
+            metrics.RecordOrderPlaced();
             return Results.Created($"/v1/orders/{response.OrderId}", response);
         });
 

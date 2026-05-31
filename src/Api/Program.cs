@@ -1,6 +1,7 @@
 using Api.Auth;
 using Api.Endpoints;
 using Api.ErrorHandling;
+using Api.Metrics;
 using Application;
 using Infrastructure;
 using Scalar.AspNetCore;
@@ -29,6 +30,7 @@ builder.Services.AddProblemDetails(options =>
     };
 });
 builder.Services.AddOpenApi();
+builder.Services.AddSnackBuildersMetrics();
 
 // Serialize enums as strings for a self-describing API contract.
 builder.Services.ConfigureHttpJsonOptions(o =>
