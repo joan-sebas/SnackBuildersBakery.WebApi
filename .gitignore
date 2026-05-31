@@ -1,0 +1,16 @@
+/prompts
+/_planning
+/logs
+
+# Build artifacts
+bin/
+obj/
+
+# User-specific files
+*.user
+*.suo
+.vs/
+
+# Environment
+.env
+
