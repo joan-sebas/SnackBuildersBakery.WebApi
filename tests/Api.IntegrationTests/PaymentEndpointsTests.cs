@@ -48,13 +48,11 @@ public sealed class PaymentEndpointsTests(ApiDbFactory factory)
         client.DefaultRequestHeaders.Add("Idempotency-Key", key);
         var body = new { Method = "Cash", Amount = 100.00m, Currency = "USD" };
 
-        // First call processes the payment; the gateway stores the result keyed by the idempotency GUID.
-        await client.PostAsJsonAsync($"/v1/orders/{orderId}/payment", body);
+        var first = await client.PostAsJsonAsync($"/v1/orders/{orderId}/payment", body);
+        first.StatusCode.Should().BeOneOf(HttpStatusCode.OK, HttpStatusCode.PaymentRequired);
 
-        // Second call with the same key must replay the stored result — never re-process.
-        // 200 or 402 means idempotency worked; 409 would mean a second charge was attempted.
         var second = await client.PostAsJsonAsync($"/v1/orders/{orderId}/payment", body);
-        second.StatusCode.Should().BeOneOf(HttpStatusCode.OK, HttpStatusCode.PaymentRequired);
+        second.StatusCode.Should().Be(first.StatusCode);
     }
 
     [Fact]

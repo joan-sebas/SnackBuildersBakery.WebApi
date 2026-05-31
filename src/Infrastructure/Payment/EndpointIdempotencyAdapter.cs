@@ -18,6 +18,16 @@ internal sealed class EndpointIdempotencyAdapter(AppDbContext db, TimeProvider t
 
     public async Task SaveAsync(Guid key, string json, int statusCode, CancellationToken ct = default)
     {
+        var existing = await db.IdempotencyRecords.FindAsync([key], ct);
+        if (existing is not null)
+        {
+            // Payment processing may reserve the same key first; endpoint replay stores the HTTP shape.
+            existing.ResultJson = json;
+            existing.HttpStatusCode = statusCode;
+            await db.SaveChangesAsync(ct);
+            return;
+        }
+
         db.IdempotencyRecords.Add(new IdempotencyRecord
         {
             Key = key,

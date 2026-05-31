@@ -1,0 +1,43 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - snackbuilders-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT}
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__SnackBuildersDb: Host=db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      Auth__ApiKeys__ManagerKey: ${MANAGER_API_KEY}
+      Auth__ApiKeys__PublicKey: ${PUBLIC_API_KEY}
+      Auth__Roles__Manager: manager
+      Auth__Roles__Public: public
+    ports:
+      - "${API_HTTP_PORT}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/ready > /dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+volumes:
+  snackbuilders-postgres:
