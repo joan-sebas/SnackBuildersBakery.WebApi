@@ -31,7 +31,7 @@ internal sealed class OrderItemConfiguration : IEntityTypeConfiguration<OrderIte
         builder.Property(i => i.StartedBakingAt);
         builder.Property(i => i.ReadyAt);
 
-        // Money is stored inline (two columns) using EF Core 8 complex type.
+        // Money is stored inline (two columns) using EF Core complex type mapping.
         builder.ComplexProperty(i => i.UnitPrice, cp =>
         {
             cp.Property(m => m.Amount)
