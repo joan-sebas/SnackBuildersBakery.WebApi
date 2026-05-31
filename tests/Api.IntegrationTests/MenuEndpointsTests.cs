@@ -29,7 +29,7 @@ public sealed class MenuEndpointsTests(ApiDbFactory factory)
         using var client = PublicClient();
         var response = await client.GetAsync("/v1/menu");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var items = await response.Content.ReadFromJsonAsync<List<MenuItemResponse>>();
+        var items = await response.Content.ReadFromJsonAsync<List<MenuItemResponse>>(TestJsonOptions.Default);
         items.Should().NotBeEmpty();
     }
 
@@ -37,12 +37,12 @@ public sealed class MenuEndpointsTests(ApiDbFactory factory)
     public async Task GetMenuItem_KnownId_ReturnsItem()
     {
         using var client = PublicClient();
-        var list = await client.GetFromJsonAsync<List<MenuItemResponse>>("/v1/menu");
+        var list = await client.GetFromJsonAsync<List<MenuItemResponse>>("/v1/menu", TestJsonOptions.Default);
         var id = list!.First().Id;
 
         var response = await client.GetAsync($"/v1/menu/{id}");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var item = await response.Content.ReadFromJsonAsync<MenuItemResponse>();
+        var item = await response.Content.ReadFromJsonAsync<MenuItemResponse>(TestJsonOptions.Default);
         item!.Id.Should().Be(id);
     }
 
@@ -63,7 +63,7 @@ public sealed class MenuEndpointsTests(ApiDbFactory factory)
         var response = await client.PostAsJsonAsync("/v1/menu", body);
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         response.Headers.Location.Should().NotBeNull();
-        var item = await response.Content.ReadFromJsonAsync<MenuItemResponse>();
+        var item = await response.Content.ReadFromJsonAsync<MenuItemResponse>(TestJsonOptions.Default);
         item!.Name.Should().Be("Test Muffin");
     }
 
@@ -92,7 +92,7 @@ public sealed class MenuEndpointsTests(ApiDbFactory factory)
         using var client = ManagerClient();
         var created = await client.PostAsJsonAsync("/v1/menu",
             new { Name = "To Delete", SnackType = "Bread", Price = 5.00m, Currency = "USD" });
-        var item = await created.Content.ReadFromJsonAsync<MenuItemResponse>();
+        var item = await created.Content.ReadFromJsonAsync<MenuItemResponse>(TestJsonOptions.Default);
 
         var response = await client.DeleteAsync($"/v1/menu/{item!.Id}");
         response.StatusCode.Should().Be(HttpStatusCode.NoContent);

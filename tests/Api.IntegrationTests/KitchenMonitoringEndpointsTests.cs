@@ -29,7 +29,7 @@ public sealed class KitchenMonitoringEndpointsTests(ApiDbFactory factory)
         using var client = ManagerClient();
         var response = await client.GetAsync("/v1/kitchen");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var snapshot = await response.Content.ReadFromJsonAsync<KitchenSnapshotResponse>();
+        var snapshot = await response.Content.ReadFromJsonAsync<KitchenSnapshotResponse>(TestJsonOptions.Default);
         snapshot.Should().NotBeNull();
         snapshot!.Slots.Should().NotBeNull();
         snapshot.Queue.Should().NotBeNull();
