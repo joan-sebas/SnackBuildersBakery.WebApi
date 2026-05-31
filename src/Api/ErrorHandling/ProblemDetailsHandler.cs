@@ -46,6 +46,8 @@ internal readonly record struct ProblemDetailsMapping(int StatusCode, string Typ
             DomainError => UnprocessableEntity(exception.Message),
             ArgumentException => BadRequest(exception.Message),
             BadHttpRequestException => BadRequest(exception.Message),
+            InvalidMoneyAmountException => BadRequest(exception.Message),
+            MoneyCurrencyMismatchException => BadRequest(exception.Message),
             _ => InternalServerError()
         };
     }
