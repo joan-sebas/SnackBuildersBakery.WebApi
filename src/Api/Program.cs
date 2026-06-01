@@ -3,6 +3,7 @@ using Api.Endpoints;
 using Api.ErrorHandling;
 using Api.Health;
 using Api.Metrics;
+using Api.OpenApi;
 using Api.Scheduler;
 using Application;
 using Infrastructure;
@@ -32,7 +33,8 @@ builder.Services.AddProblemDetails(options =>
         context.ProblemDetails.Extensions["traceId"] = Activity.Current?.Id ?? context.HttpContext.TraceIdentifier;
     };
 });
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options =>
+    options.AddDocumentTransformer<ApiKeySecuritySchemeTransformer>());
 builder.Services.AddSnackBuildersMetrics();
 builder.Services.AddApiHealthChecks();
 
