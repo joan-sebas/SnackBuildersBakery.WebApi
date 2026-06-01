@@ -22,17 +22,21 @@ public sealed class TrackOrderQuery(IOrderRepository orders, ISchedulerCoordinat
         var order = await orders.GetByIdAsync(orderId, cancellationToken)
             ?? throw new InvalidOperationException($"Order not found. OrderId: {orderId}");
 
+        var schedulerItems = scheduler.GetSnapshot().Items.ToDictionary(i => i.OrderItemId);
         var estimates = scheduler.EstimateReadyTimes();
 
         var items = order.Items
             .Select(item =>
             {
-                // Ready items: use the recorded ReadyAt; others: look up in the scheduler projection.
-                var estimated = item.Status == OrderItemStatus.Ready
-                    ? item.ReadyAt
+                var status = schedulerItems.TryGetValue(item.Id, out var schedulerItem)
+                    ? schedulerItem.Status
+                    : item.Status;
+                var readyAt = schedulerItem?.ReadyAt ?? item.ReadyAt;
+                var estimated = status == OrderItemStatus.Ready
+                    ? readyAt
                     : estimates.TryGetValue(item.Id, out var est) ? est : (DateTimeOffset?)null;
 
-                return new OrderItemTracking(item.Id, item.SnackType, item.Status, estimated);
+                return new OrderItemTracking(item.Id, item.SnackType, status, estimated);
             })
             .ToList();
 
