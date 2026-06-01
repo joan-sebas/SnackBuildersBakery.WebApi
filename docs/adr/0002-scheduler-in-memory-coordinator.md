@@ -1,89 +1,59 @@
-# ADR 0002: In-memory scheduler coordinator with single mutation lock
-
-Narrows ADR 0001 §"Scheduler state is owned in-memory" with the specific design
-adopted during M2.
+# ADR 0002: In-memory Scheduler Coordinator with Single Mutation Lock
 
 ## Context
 
-The kitchen has fixed physical capacity: 2 ovens × 3 trays = 6 baking slots. A single
-coordinator owns all slot state at runtime. The scheduling policy — priority aging,
-queue selection, slot lifecycle — must be deterministically testable as a pure function
-with no clock or side-effect dependencies.
+Kitchen capacity is configurable through scheduler settings: oven count, trays per oven, turnover duration, tier weights, aging factor, and bake times. The current local defaults are two ovens and three trays per oven, but the domain policy must not depend on those concrete numbers.
 
-The implementation must make concurrency control explicit and auditable in-process, which
-requires a clearly owned lock boundary rather than implicit optimistic retries or
-infrastructure-level serialization.
+The scheduling policy must remain deterministic and testable as a pure function. Runtime coordination still needs a clear owner for live state so concurrent payments, queue updates, and background reconciliation cannot mutate the same kitchen projection in conflicting ways.
 
 ## Decision
 
-### Pure policy in Domain
+### Pure Policy in Domain
 
-`KitchenScheduler.Reconcile(state, now)` is a pure function: immutable input, immutable
-output, no clock reads, no mutable state. Given the same `(state, now)` pair it always
-returns the same result. This makes the scheduling behavior unit-testable without mocks.
+`KitchenScheduler.Reconcile(state, now)` is a pure function. It receives immutable input state and an explicit timestamp, then returns a new immutable state. It does not read the system clock, access persistence, log, publish metrics, or mutate shared objects.
 
-`SelectionRank` is the single source of the queue selection rule (score → tier → FIFO).
-Both `KitchenQueue.SelectNext` and the `Reconcile` assignment phase reference it, so the
-two sites cannot diverge.
+`SelectionRank` is the single source of the queue ordering rule: score first, then base tier, then FIFO. `KitchenQueue.SelectNext`, reconciliation, and ready-time estimation rely on that same ranking model so queue behavior cannot diverge across code paths.
 
-### Live state owned by Application coordinator
+### Live State Owned by Application Coordinator
 
-`SchedulerCoordinator` (behind `ISchedulerCoordinator`) is the only place that holds a
-mutable reference to `SchedulerState`. It owns:
+`SchedulerCoordinator`, exposed through `ISchedulerCoordinator`, owns the mutable runtime reference to `SchedulerState`. It serializes mutations with one `SemaphoreSlim(1, 1)` and uses injected `TimeProvider` as the only runtime source of `now`.
 
-- One `SemaphoreSlim(1, 1)` that serializes every mutation.
-- An injected `TimeProvider` that is the sole source of `now` for mutations.
-- A `SchedulerState` field published via `Volatile.Write` so lock-free reads always
-  see a fully committed snapshot.
+Every mutation follows the same flow:
 
-Every mutation (`EnqueueAsync`, `ReconcileAsync`) follows: await lock → read `now` →
-apply change → `KitchenScheduler.Reconcile` → publish new state → release lock in
-`finally`. Reads (`GetSnapshot`, `EstimateReadyTimes`) access `Volatile.Read(_state)`
-with no lock.
+1. Acquire the coordinator lock.
+2. Read `now` from `TimeProvider`.
+3. Apply the requested state change.
+4. Run `KitchenScheduler.Reconcile`.
+5. Publish the committed state snapshot.
+6. Release the lock in `finally`.
 
-### State derived from order-items, not persisted separately
+Reads use the latest committed snapshot and avoid holding the mutation lock. This keeps monitoring and estimate reads cheap while preserving mutation safety.
 
-No `SchedulerState` snapshot is stored in the database. On startup the coordinator
-reconstructs state from queued and in-progress `OrderItem` rows using their absolute
-timestamps (`StartedBakingAt`, `BakingEndsAt`). This keeps the database as the durable
-source of truth and avoids a second, potentially divergent slot table.
+### State Derived From Order Items
 
-### Estimated ready time computed on read
+No separate scheduler-state or slot table is stored as the durable source of truth. On startup, the runtime scheduler projection is reconstructed from queued and baking `OrderItem` rows and their absolute timestamps.
 
-`EstimateReadyTimes` simulates slot free-times against the current queue ordering and
-returns a fresh projection each call. Nothing is cached or stored, so estimates are
-always consistent with committed state and require no invalidation logic.
+This avoids maintaining two durable sources of truth: order items remain the persisted business record, and scheduler state remains a runtime projection.
 
-### VIP recalculation emergent, no dedicated path
+### Estimated Ready Time Computed on Read
 
-When a VIP item is enqueued, `SelectionRank` places it at the front of the queue on the
-next `Reconcile`. Lower-priority queued estimates shift automatically on the next
-`EstimateReadyTimes` read. No separate VIP-arrival mutation is needed; the single-source
-selection rule subsumes it.
+`EstimateReadyTimes` computes a fresh projection from the current scheduler snapshot. Estimates are not cached or persisted because every mutation can change queue ordering, slot availability, and aging score.
+
+### VIP Recalculation Emerges From the Ranking Rule
+
+VIP arrival does not require a dedicated mutation path. A VIP item enters the same queue model as every other item, and the ranking rule places it appropriately on the next reconciliation/estimate. Lower-priority estimates shift naturally because estimates are computed from the current ordering.
 
 ## Consequences
 
-- The Domain policy and the concurrency boundary are independently testable: pure-function
-  tests need no coordinator; coordinator tests need no time-advance complexity beyond
-  `FakeTimeProvider`.
-- The ISchedulerCoordinator port isolates the in-memory design from all consumers. Replacing
-  the in-memory coordinator with a DB-backed or partitioned one is a single adapter swap that
-  touches neither `KitchenScheduler` nor any use case.
-- Scaling path: partition by kitchen (one coordinator per physical kitchen), restore state
-  from `OrderItem` rows on failover. The pure policy and the port contract carry forward
-  unchanged.
-- Single-process ownership is the trade-off today: two application instances cannot share
-  live slot state without coordination. Accepted for the current single-kitchen scope.
+- Domain scheduling behavior is easy to test without mocks because all time and state are explicit inputs.
+- Runtime mutation safety is concentrated in one application service instead of spread across endpoints, repositories, or background services.
+- The in-memory coordinator is suitable for a single API process. Multiple active API instances would require partitioning by kitchen, a DB-backed coordinator, distributed locking, or an external queue.
+- Reconstructing scheduler state from order items gives restart resilience without persisting a second slot model.
+- Computed estimates avoid cache invalidation, but callers pay a small computation cost on each estimate read.
 
 ## Alternatives Considered
 
-- **DB-backed coordinator from day one**: rejected. It would add persistence complexity
-  before the domain model is stable, obscure the in-process concurrency behavior that the
-  design is meant to demonstrate, and provide no real headroom given the 6-slot physical
-  ceiling of a single kitchen.
-- **Stored estimate cache on VIP arrival**: rejected. Storing a pre-computed estimate
-  introduces a second source of truth that must be invalidated on every mutation. The
-  computed-on-read model is strictly simpler and always consistent.
-- **Dedicated VIP-enqueue mutation path**: rejected. A separate code path for VIP would
-  duplicate the selection rule and create a divergence risk. The single-source
-  `SelectionRank` already handles any priority level uniformly.
+- DB-backed coordinator from day one: rejected because it would add locking and persistence complexity before the assignment needs horizontal runtime coordination.
+- Persisted slot table as the primary source of truth: rejected because it duplicates information already represented by order-item timestamps and creates divergence risk.
+- Stored estimate cache on VIP arrival: rejected because estimates can change after any queue or slot mutation and would need broad invalidation logic.
+- Dedicated VIP enqueue path: rejected because it would duplicate the selection rule and make priority behavior harder to audit.

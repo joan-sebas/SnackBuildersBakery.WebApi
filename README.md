@@ -10,6 +10,19 @@ The solution follows Clean Architecture:
 - `src/Api`: minimal API endpoints, auth, Problem Details, logging, metrics, health checks, and API reference.
 - `tests`: unit and integration tests by layer.
 
+## Key Design Decisions
+
+The design favors explicit boundaries and deterministic behavior over a thinner endpoint-only implementation.
+
+- **Clean Architecture:** Domain owns business rules and has no dependency on ASP.NET Core, EF Core, logging, metrics, Docker, or Scalar. Application exposes use cases and ports; Infrastructure implements persistence/payment adapters; Api composes runtime concerns.
+- **Scheduler ownership:** Scheduling rules are pure domain policy, while live kitchen state is owned by `ISchedulerCoordinator` behind a single in-process mutation boundary. Durable state remains in order-item rows, and startup reconstruction rebuilds the scheduler projection.
+- **Time-driven reconciliation:** Baking completion and turnover can happen without an inbound request, so `KitchenReconciliationWorker` advances scheduler state on configurable ticks. It uses `TimeProvider` so tests can advance time deterministically instead of sleeping.
+- **Configuration over hardcoding:** Bake times, tier weights, aging factor, oven count, trays per oven, turnover, payment failure rates, latency, API keys, and worker cadence are configuration-backed. The current local kitchen default is 2 ovens x 3 trays.
+- **Idempotency for unsafe operations:** Order and payment writes support `Idempotency-Key` so retries can replay stored responses rather than duplicating side effects. Payment gateway idempotency also protects gateway calls.
+- **Observability at the edge:** Serilog, health checks, readiness checks, and `System.Diagnostics.Metrics` are wired in Api/composition code so Domain and Application stay focused on business behavior.
+- **Docker-first delivery:** Docker Compose runs Postgres and the API together. The API applies migrations, seeds baseline menu data, and reconstructs scheduler state on startup outside the Testing environment for fresh-clone verification.
+- **Documented tradeoffs:** ADRs record why these options were chosen over alternatives such as request-only reconciliation, direct EF Core use in use cases, persisted slot tables, endpoint-local metrics, and early distributed coordination.
+
 ## Prerequisites
 
 - Docker with Docker Compose.
@@ -99,6 +112,18 @@ Remove the Postgres volume when a clean database is needed:
 docker compose down -v
 ```
 
+## Demo Script
+
+Use this flow to demonstrate the full delivery without relying on hidden setup:
+
+1. Start the stack with `docker compose up --build`.
+2. Verify runtime health with `GET /health` and dependency readiness with `GET /ready`.
+3. Open Scalar at `http://localhost:8080/scalar/v1` to inspect the API surface.
+4. List menu items, place an order with an `Idempotency-Key`, pay it, and track the order.
+5. Open `GET /v1/kitchen` with `X-Api-Key: manager-dev-key` to show slot and queue state.
+6. Keep the kitchen endpoint open or call it repeatedly; the hosted reconciliation worker advances baking and turnover state on configured ticks.
+7. For a faster live demo, shorten `Scheduler__BakeTimes__*` and `KitchenWorker__ReconcileInterval` through environment configuration instead of adding a time-jump endpoint.
+
 ## API Reference
 
 In the Development environment, the OpenAPI document and interactive API reference are
@@ -135,6 +160,14 @@ Metric names:
 - `snackbuilders.queue.depth`
 - `snackbuilders.slots.occupied`
 
+## Known Limitations
+
+- Scheduler state is owned by one API process. Horizontal scaling would require partitioning by kitchen, DB-backed coordination, distributed locking, or an external queue.
+- Startup migrations are used for fresh-clone and Docker demo convenience. A production deployment should normally run migrations through an explicit release pipeline.
+- API keys provide assignment-level manager/public role separation, not full customer identity, account ownership, or JWT/OAuth authorization.
+- Scalar currently exposes the API shape, but the OpenAPI document does not yet declare the `X-Api-Key` security scheme visually for protected endpoints.
+- The runtime API intentionally has no endpoint to jump time forward. Tests use `FakeTimeProvider`; demos should shorten configured bake times and worker cadence.
+
 ## Local Development
 
 Restore, build, and test:
@@ -156,6 +189,8 @@ dotnet ef database update --project src/Infrastructure/Infrastructure.csproj --s
 
 - [Architecture ADR](docs/adr/0001-stack-and-architecture.md)
 - [Scheduler coordinator ADR](docs/adr/0002-scheduler-in-memory-coordinator.md)
+- [Runtime delivery and observability ADR](docs/adr/0003-runtime-delivery-and-observability.md)
+- [Design patterns and boundary choices ADR](docs/adr/0004-design-patterns-and-boundary-choices.md)
 - [Assumptions](docs/assumptions.md)
 - [Layered architecture diagram](docs/diagrams/architecture.md)
 - [Domain state diagram](docs/diagrams/states.md)

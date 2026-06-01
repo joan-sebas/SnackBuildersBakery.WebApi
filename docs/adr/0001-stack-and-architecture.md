@@ -2,41 +2,35 @@
 
 ## Context
 
-The project requires a high-performance bakery backend with strict scheduling behavior, deterministic testability, and clear architectural boundaries. The implementation must prioritize correctness under concurrency and preserve maintainability during iterative milestones.
+The project requires a bakery backend with deterministic scheduling behavior, explicit concurrency boundaries, and a delivery path that can be verified from a fresh clone. The implementation must prioritize correctness, testability, and maintainability across iterative milestones.
 
-The selected runtime and language baseline is .NET 10 with C# 14. The system currently runs as a single deployable and uses minimal APIs at the edge.
+The selected runtime and language baseline is .NET 10 with C# 14. The system runs as a single deployable API process and uses minimal APIs at the HTTP edge.
 
 ## Decision
 
-Use Clean Architecture with four layers and inward dependency direction:
+Use Clean Architecture with inward dependency direction:
 
-- `Domain`: business rules and scheduling policy.
-- `Application`: use-case orchestration and ports.
-- `Infrastructure`: EF Core, persistence, external adapters, time and payment implementations.
-- `Api`: minimal API endpoints and transport concerns.
+- `Domain`: business entities, value objects, domain errors, and pure scheduling policy.
+- `Application`: use cases, ports, domain events, and runtime scheduler coordination contracts.
+- `Infrastructure`: EF Core persistence, repositories, payment simulation, idempotency persistence, scheduler configuration, and scheduler reconstruction.
+- `Api`: HTTP endpoints, authentication/authorization, Problem Details, logging, metrics, health checks, OpenAPI/Scalar, Docker-facing startup, and hosted runtime workers.
 
-Use a modular monolith as a single deployable process.
+Use a modular monolith as a single deployable process. This keeps the assignment scope concrete while preserving clear boundaries that can be split later if scale requires it.
 
-The scheduler state is owned in-memory within one process and protected by process-level locks. This keeps a single owner of oven-slot truth and avoids distributed locking and coordination overhead at this stage.
+The scheduler is modeled as domain policy plus an application-level coordinator. Domain owns the scheduling rules; Application owns the mutable runtime state boundary; Infrastructure rebuilds the state from durable order-item rows; Api starts the runtime worker that advances time-driven transitions.
 
-Patterns used at a high level:
-
-- Strategy for aging and payment behavior variants.
-- Domain service for scheduler policy orchestration at the domain boundary.
-- Port and adapter boundaries for infrastructure substitutions.
-- Repository for persistence access behind domain-oriented contracts.
-- Factory for aggregate creation flows that require consistent setup.
-- Domain events for internal decoupled reactions.
+High-level design patterns are documented separately in [ADR 0004](0004-design-patterns-and-boundary-choices.md). Runtime delivery and observability decisions are documented in [ADR 0003](0003-runtime-delivery-and-observability.md).
 
 ## Consequences
 
-- Architectural boundaries remain explicit and testable.
-- Scheduler concurrency behavior stays deterministic in-process.
-- The deployment model remains simple during early milestones.
-- Future scale path remains open by partitioning ownership by kitchen and introducing additional processes without rewriting domain policy.
-- The team must enforce boundary discipline to avoid layer leakage.
+- Business rules remain independent from HTTP, EF Core, logging, metrics, and Docker.
+- The domain scheduler can be tested as pure policy, while runtime concerns are tested at the application/API boundary.
+- The deployment model stays simple for local development and assessment.
+- The architecture keeps a future scale path open by replacing adapters or partitioning scheduler ownership without rewriting domain policy.
+- Boundary discipline must be enforced during changes; the composition root is responsible for wiring cross-cutting behavior.
 
 ## Alternatives Considered
 
-- Distributed microservices from the start: rejected due to unnecessary distributed coordination complexity for a single-kitchen capacity model.
-- Layer collapse into a single project: rejected due to reduced test isolation and weaker boundary control.
+- Distributed microservices from the start: rejected because the single-kitchen assignment would pay distributed coordination costs before there is evidence of a scaling need.
+- Layer collapse into a single project: rejected because it weakens test isolation, makes side effects harder to control, and obscures which code owns business rules.
+- Persisting every scheduler slot as the primary model: rejected for the baseline because order-item timestamps are enough durable state, while live slot assignment is a runtime projection documented in ADR 0002.
