@@ -178,6 +178,16 @@ dotnet build SnackBuilders.slnx
 dotnet test SnackBuilders.slnx --no-build
 ```
 
+Run the full bakery scenario test:
+
+```bash
+dotnet test tests/Application.UnitTests/Application.UnitTests.csproj --filter FullBakeryScenario
+```
+
+The scenario covers the default 2 ovens x 3 trays capacity, multiple paid orders,
+queueing, VIP reassignment, turnover, deterministic time advancement, tracking, and
+kitchen monitoring.
+
 Apply migrations manually against a local database:
 
 ```bash
