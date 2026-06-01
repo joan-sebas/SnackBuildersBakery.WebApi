@@ -53,7 +53,7 @@ public sealed class ApiDbFactory : WebApplicationFactory<Program>, IAsyncLifetim
                 // Explicit scheduler values guard against content-root resolution misses in CI.
                 ["Scheduler:AgingFactor"] = "1.5",
                 ["Scheduler:OvensCount"] = "2",
-                ["Scheduler:TraysPerOven"] = "4",
+                ["Scheduler:TraysPerOven"] = "3",
                 ["Scheduler:Turnover"] = "00:00:30",
                 ["Scheduler:TierWeights:Vip"] = "10",
                 ["Scheduler:TierWeights:Delivery"] = "5",
