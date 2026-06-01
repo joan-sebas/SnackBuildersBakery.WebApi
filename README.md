@@ -137,8 +137,25 @@ available at:
 Manager-only endpoints use the `X-Api-Key` header. Local placeholder keys are defined in
 `.env.example` and should be replaced outside source control for real deployments.
 
-Public ordering and payment routes are intentionally simple for the assignment scope.
-Unsafe operations use `Idempotency-Key` to prevent duplicate order/payment effects.
+Routes fall into two access levels:
+
+| Route | Method | Access |
+|-------|--------|--------|
+| `/v1/menu` | GET | Anonymous |
+| `/v1/menu`, `/v1/menu/{id}` | POST / PUT / DELETE | Manager (`X-Api-Key`) |
+| `/v1/orders` | POST | Anonymous |
+| `/v1/orders/{id}` | GET | Anonymous |
+| `/v1/orders/{id}/payment` | POST | Anonymous |
+| `/v1/kitchen` | GET | Manager (`X-Api-Key`) |
+| `/health`, `/ready` | GET | Anonymous |
+
+Public routes (ordering, payment, tracking, menu reads) are intentionally anonymous and
+need no key. Only menu mutations and kitchen monitoring require the manager key. Unsafe
+operations use `Idempotency-Key` to prevent duplicate order/payment effects.
+
+In Scalar, the `X-Api-Key` scheme appears under the authentication panel: paste the
+manager key there once and the protected routes (marked with a lock) become callable from
+the UI.
 
 ## Observability
 
@@ -165,7 +182,6 @@ Metric names:
 - Scheduler state is owned by one API process. Horizontal scaling would require partitioning by kitchen, DB-backed coordination, distributed locking, or an external queue.
 - Startup migrations are used for fresh-clone and Docker demo convenience. A production deployment should normally run migrations through an explicit release pipeline.
 - API keys provide assignment-level manager/public role separation, not full customer identity, account ownership, or JWT/OAuth authorization.
-- Scalar currently exposes the API shape, but the OpenAPI document does not yet declare the `X-Api-Key` security scheme visually for protected endpoints.
 - The runtime API intentionally has no endpoint to jump time forward. Tests use `FakeTimeProvider`; demos should shorten configured bake times and worker cadence.
 
 ## Local Development
